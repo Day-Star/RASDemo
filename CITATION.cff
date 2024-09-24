@@ -1,0 +1,37 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: RASDemo
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Gabriel
+    family-names: Chenevert
+    email: gechenev@ncsu.edu
+    affiliation: North Carolina State University
+    orcid: 'https://orcid.org/0000-0003-2574-5896'
+repository-code: 'https://github.com/Day-Star/RASDemo'
+abstract: >-
+  Reach Avoid Stay (RAS) optimal control enables systems
+  such as delivery robots, and air taxis to reach their
+  target while avoiding obstacles and stay. Unfortunately,
+  many current implementations of RAS suffer from
+  limitations such as inability to handle dynamic obstacles
+  and targets or scalability. Many of these challenges have
+  already been solved in the related area of reach avoid
+  optimal control. In this paper, we propose a two step
+  algorithm agnostic method which extends the capabilities
+  currently available to reach avoid to RAS. First we
+  identify the maximum set where RAS is possible. Second we
+  train a policy to reach that set while avoiding all
+  obstacles. This enables RAS behavior on complex dynamic
+  environments while maintaining scalability to high
+  dimension systems.
+keywords:
+  - optimal control
+  - control
+  - reach avoid stay
+license: MPL-2.0
