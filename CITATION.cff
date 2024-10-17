@@ -13,6 +13,11 @@ authors:
     email: gechenev@ncsu.edu
     affiliation: North Carolina State University
     orcid: 'https://orcid.org/0000-0003-2574-5896'
+  - given-names: Jingqi
+    family-names: Li
+    email: jingqili@berkeley.edu
+    affiliation: University of California, Berkeley
+    orcid: 'https://orcid.org/0000-0002-3731-3807'
 repository-code: 'https://github.com/Day-Star/RASDemo'
 abstract: >-
   Reach Avoid Stay (RAS) optimal control enables systems
