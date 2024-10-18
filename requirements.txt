@@ -1,3 +1,4 @@
 tianshou==1.1.0
 onnxruntime==1.19.2
 onnx==1.17.0
+pygame>=2.6.1
