@@ -1,13 +1,9 @@
 __credits__ = ["Carlos Luis","Gabriel Chenevert"]
 __license__ = "MIT"
 
-from os import path
 from typing import Optional
-
 import numpy as np
-
 import torch
-
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.envs.classic_control import utils

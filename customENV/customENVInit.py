@@ -41,3 +41,10 @@ register(
     max_episode_steps=700,  # Maximum number of steps allowed in an episode
     reward_threshold= 500.0,  # Threshold for the reward function
 )
+
+register(
+    id= "Combine-v1",  # Unique identifier for the environment
+    entry_point="customENV.RASCombine.CombineEnv",  # Entry point for the environment class
+    max_episode_steps=1000,  # Maximum number of steps allowed in an episode
+    reward_threshold= 500.0,  # Threshold for the reward function
+)
