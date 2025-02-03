@@ -1,13 +1,11 @@
 __credits__ = ["Gabriel Chenevert"]
 __license__ = "MIT"
 
-from os import path
 from typing import Optional
 import numpy as np
 import torch
 import gymnasium as gym
 from gymnasium import spaces
-from gymnasium.envs.classic_control import utils
 
 class CombineEnv(gym.Env):
 
@@ -56,8 +54,8 @@ class CombineEnv(gym.Env):
     """
 
     metadata = {
-        'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second': 30
+        'render_modes': ['human', 'rgb_array'],
+        'video_frames_per_second': 30
     }
 
     def __init__(self, hPolicy = None, do_term = False, term_reward = None, render_mode: Optional[str] = None):
@@ -104,12 +102,17 @@ class CombineEnv(gym.Env):
         # Set the control space
         high = np.array([self.maxThetaDot, self.maxTractorAccel], dtype=np.float64)
         low = np.array([-self.maxThetaDot, -self.maxTractorAccel], dtype=np.float64)
-        self.action_space = spaces.Box(low=low, high=high, dtype=np.float64)
+        self.control_space = spaces.Box(low=low, high=high, dtype=np.float64)
 
         # Set the disturbance space
         high = np.array([self.maxCombineAccel], dtype=np.float64)
         low = np.array([-self.maxCombineAccel], dtype=np.float64)
         self.disturbance_space = spaces.Box(low=low, high=high, dtype=np.float64)
+
+        # Set the action space
+        high = np.array([self.maxThetaDot, self.maxTractorAccel, self.maxCombineAccel], dtype=np.float64)
+        low = np.array([-self.maxThetaDot, -self.maxTractorAccel, -self.maxCombineAccel], dtype=np.float64)
+        self.action_space = spaces.Box(low=low, high=high, dtype=np.float64)
 
         # Set the H policy
         self.hPolicy = hPolicy
@@ -236,10 +239,6 @@ class CombineEnv(gym.Env):
             # Return terminated
             return self._get_obs(), reward, done, False, {'reach': reach, 'avoid': avoid}
 
-        # Check if we are rendering
-        if self.render_mode == 'human':
-            self.render()
-
         # Return the observation, reward, and done flag
         return self._get_obs(), reward, False, False, {'reach': reach, 'avoid': avoid}
     
@@ -264,7 +263,7 @@ class CombineEnv(gym.Env):
         else:
             # Initialize the state
             x = np.random.uniform(-self.fieldWidth/2, self.fieldWidth/2)
-            y = np.random.uniform(-self.fieldHeight, self.combineOffset)
+            y = np.random.uniform((self.combineOffset - self.fieldHeight), self.combineOffset)
             theta = np.random.uniform(-180, 180)
             vt = np.random.uniform(-self.maxTractorSpeed, self.maxTractorSpeed)
             vc = np.random.uniform(self.minCombineSpeed, self.maxCombineSpeed)
@@ -308,7 +307,7 @@ class CombineEnv(gym.Env):
         
             
 
-def angleNorm(self, theta):
+def angleNorm(theta):
     """
     Normalizes the angle to be between -180 and 180 degrees.
 

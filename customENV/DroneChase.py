@@ -1,6 +1,5 @@
 __credits__ = ["Gabriel Chenevert"]
 
-from os import path
 from typing import Optional
 import numpy as np
 import torch

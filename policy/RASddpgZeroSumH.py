@@ -72,6 +72,7 @@ class ras_DDPGZeroSum(BasePolicy):
         # tanh not supported, see assert below
         action_bound_method: Literal["clip"] | None = "clip",
         lr_scheduler: TLearningRateScheduler | None = None,
+        is_within_training_step: bool = True,
     ) -> None:
         assert 0.0 <= tau <= 1.0, f"tau should be in [0, 1] but got: {tau}"
         assert 0.0 <= gamma <= 1.0, f"gamma should be in [0, 1] but got: {gamma}"
@@ -129,6 +130,7 @@ class ras_DDPGZeroSum(BasePolicy):
         # it is only a little difference to use GaussianNoise
         # self.noise = OUNoise()
         self.estimation_step = estimation_step
+        self.is_within_training_step = is_within_training_step
 
     def set_exp_noise(self, noise: BaseNoise | None) -> None:
         """Set the exploration noise."""
