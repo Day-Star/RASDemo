@@ -52,7 +52,7 @@ def get_args():
     # Number of training envorinments (training workers)
     parser.add_argument('--training-num', type=int, default=8)
     # Number of testing environments (testing workers)
-    parser.add_argument('--test-num', type=int, default=100)
+    parser.add_argument('--test-num', type=int, default=20)
 
     """ Training Length and Batch Size Parameters"""
     # Set the number of epochs for the simulation. Note: if --reward-threshold is met, the simulation will end early

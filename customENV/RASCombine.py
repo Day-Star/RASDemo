@@ -80,7 +80,7 @@ class CombineEnv(gym.Env):
         self.tractorRadius = .4     # Radius of the tractor in meters
 
         # Set the combine parameters
-        self.maxCombineSpeed = 2.0  # Maximum speed of the combine m/s
+        self.maxCombineSpeed = 1.5  # Maximum speed of the combine m/s
         self.minCombineSpeed = 0.5  # Minimum speed of the combine m/s
         self.maxCombineAccel = 1.5  # Maximum acceleration of the combine m/s^2
         self.combineRadius = .4     # Radius of the combine in meters
@@ -91,8 +91,8 @@ class CombineEnv(gym.Env):
         self.combineOffset = 2.0    # Offset of the combine from the top of the field in meters
 
         # Set the target parameters
-        self.targetRadius = .5      # Radius of the target in meters
-        self.targetOffset = 1.2     # Offset of the target from the combine in meters
+        self.targetRadius = 1       # Radius of the target in meters
+        self.targetOffset = -2.0     # Offset of the target from the combine in meters
 
         # Set the observation space
         high = np.array([self.fieldWidth/2, self.combineOffset, 180, self.maxTractorSpeed, self.maxCombineSpeed], dtype=np.float64)
@@ -139,7 +139,14 @@ class CombineEnv(gym.Env):
         """
 
         # Calculate the distance to the target
-        return self.targetRadius - np.sqrt(x**2 + (y - self.targetOffset)**2)
+        dist = self.targetRadius - np.sqrt(x**2 + (y - self.targetOffset)**2)
+
+        # Check if we are in the target
+        if dist > 0:
+            return dist
+
+        # Calculate the distance to the target
+        return dist
     
     def l_x(self, x, y):
         """
@@ -154,13 +161,13 @@ class CombineEnv(gym.Env):
         """
 
         # Crops above the combine
-        l1 = -y -self.tractorRadius + 2 * self.combineRadius
+        l1 = (-y -self.tractorRadius + self.combineRadius)
 
         # Crops in front of the combine
-        l2 = min(abs(x-50) - 50, abs(y) - (self.combineRadius + self.tractorRadius))
+        l2 = (min(abs(x-50) - 50, abs(y) - (self.combineRadius + self.tractorRadius)))
 
         # Calculate the distance to the combine
-        combine_dist = np.sqrt(x**2 + y**2) - (self.combineRadius + self.tractorRadius)
+        combine_dist = (np.sqrt(x**2 + y**2) - (self.combineRadius + self.tractorRadius))
 
         # Return the minimum of the three
         return min(l1, l2, combine_dist)

@@ -38,8 +38,8 @@ def get_args():
     )
 
     # Network sized
-    parser.add_argument('--batch-size', type=int, default=400)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[ 800, 800, 800])
+    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[ 128, 128])
 
     # Testing parameters                                          # Time to test
     parser.add_argument('--state', type=np.array, default=np.array([DEFAULT_X, DEFAULT_Y, DEFAULT_THETA, DEFAULT_VT, DEFAULT_VC]))  # State to test
@@ -149,7 +149,7 @@ def test(state, environment, logdir, device, csv, forceH = False, forceV = False
         with open(csv, 'a', newline='') as f:
 
             # Write the data
-            f.write(f'{state[0]}, {state[1]}, {state[2]}, {state[3]}, {state[4]}, {state[5]}, {state[6]}, {state[7]}, {reward}, {hReward}, {vReward}\n')
+            f.write(f'{state[0]}, {state[1]}, {state[2]}, {state[3]}, {state[4]}, {reward}, {hReward}, {vReward}\n')
     
     # Close the file
     f.close()
@@ -158,4 +158,4 @@ def test(state, environment, logdir, device, csv, forceH = False, forceV = False
     print("Final State: ", state)
 
 if __name__ == "__main__":
-    main(train=True)
+    main(train = True, doTest=True)
