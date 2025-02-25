@@ -3,16 +3,17 @@
 
 import argparse
 import os
+import sys
 import pprint
 import gymnasium as gym
-import customENV.customENVInit
+from customENV import customENVInit
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.exploration import GaussianNoise
-from policy.RASddpgZeroSumH import ras_DDPGZeroSum as DDPGPolicy
+from policy.RASddpgZeroSumV import ras_DDPGZeroSum as DDPGPolicy
 from tianshou.trainer import OffpolicyTrainer as offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -23,7 +24,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     """ Gym Environment Parameters"""
-    parser.add_argument('--task', type=str, default='Combine-v1')   # Set the task to be the Fly environment
+    parser.add_argument('--task', type=str, default='Combine-v2')   # Set the task to be the Fly environment
     
     # Environment termination perameters
     parser.add_argument('-e','--do-term', action="store_true", default=False)  # Should the simulation end when the drone exits the environment?
@@ -48,21 +49,21 @@ def get_args():
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
     # Number of training envorinments (training workers)
-    parser.add_argument('--training-num', type=int, default=16)
+    parser.add_argument('--training-num', type=int, default=8)
     # Number of testing environments (testing workers)
-    parser.add_argument('--test-num', type=int, default=10)
+    parser.add_argument('--test-num', type=int, default=100)
 
     """ Training Length and Batch Size Parameters"""
     # Set the number of epochs for the simulation. Note: if --reward-threshold is met, the simulation will end early
     # If reward threshold is not met, the simulation may end with an AssertionError on line 146 (assert stop_fn(result['best_reward'])
-    parser.add_argument('--epoch', type=int, default=200)
+    parser.add_argument('--epoch', type=int, default=50)
     # Set the number of steps per epoch. The total steps can be calculated by multiplyaing --step-per-epoch by --epoch
-    parser.add_argument('--step-per-epoch', type=int, default=40000)
-    parser.add_argument('--step-per-collect', type=int, default=16)
+    parser.add_argument('--step-per-epoch', type=int, default=20000)
+    parser.add_argument('--step-per-collect', type=int, default=8)
     parser.add_argument('--update-per-step', type=float, default=0.125)
-    parser.add_argument('--batch-size', type=int, default=1024)
-    parser.add_argument('--actor-hidden-sizes', type=int, nargs='*', default=[1024]*4)
-    parser.add_argument('--critic-hidden-sizes', type=int, nargs='*', default=[768]*4)
+    parser.add_argument('--batch-size', type=int, default=1000)
+    parser.add_argument('--actor-hidden-sizes', type=int, nargs='*', default=[512]*3)
+    parser.add_argument('--critic-hidden-sizes', type=int, nargs='*', default=[100]*2)
 
     """ Logging and Rendering Parameters"""
     parser.add_argument('--logdir', type=str, default='log')                # Set the log directory
@@ -76,7 +77,7 @@ def get_args():
 
 # Defining ddpg test function
 # This is a generic catch all function that *should* work for all systems
-def H_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_reward = None, logdir = None, h_batch_size = None, hidden_sizes = None, steps_per_epoch = None, critic_hidden_sizes = None, **kwargs):
+def H_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_reward = None, logdir = None, batch_size = None, hidden_sizes = None, steps_per_epoch = None, critic_hidden_sizes = None, **kwargs):
 
     # Parse the arguments received from external function call
     task = args.task if task is None else task                              # Set new task if provided
@@ -84,13 +85,14 @@ def H_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_rewa
     do_term = args.do_term if do_term is None else do_term                  # Set new termination parameters if provided
     term_reward = args.term_reward if term_reward is None else term_reward  # Set new termination reward if provided
     logdir = args.logdir if logdir is None else logdir                      # Set new log directory if provided
-    batch_size = args.batch_size if h_batch_size is None else h_batch_size      # Set new batch size if provided
+    batch_size = args.batch_size if batch_size is None else batch_size      # Set new batch size if provided
     actor_hidden_sizes = args.actor_hidden_sizes if hidden_sizes is None else hidden_sizes  # Set new hidden sizes if provided
     critic_hidden_sizes = args.critic_hidden_sizes if critic_hidden_sizes is None else critic_hidden_sizes  # Set new hidden sizes if provided
     steps_per_epoch = args.step_per_epoch if steps_per_epoch is None else steps_per_epoch  # Set new steps per epoch if provided
 
-    # Print h_batch_size
-    print("batch_size: ", batch_size)
+    # Check if doing v1 training
+    if 'v1' in task:
+        task = task.replace('v1','v2')
 
     env = gym.make(task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
@@ -181,7 +183,7 @@ def H_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_rewa
 
     def save_best_fn(policy):
         # Saving policy and class so we can load it without knowing anything later
-        torch.save(policy, os.path.join(log_path, 'hPolicy.pth'))
+        torch.save(policy, os.path.join(log_path, 'raPolicy.pth'))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold if args.do_threshold else False

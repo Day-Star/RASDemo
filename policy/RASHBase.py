@@ -461,4 +461,5 @@ def _nstep_return(
         # Function should represent cost to go: min{g(x),l(x)} + \gamma * H(f(x,u))
         # target_q = np.minimum(returns) + target_q * gamma_buffer[gammas].reshape(bsz, 1)
     target_q = np.minimum(returns, target_q * gamma_buffer[gammas].reshape(bsz, 1))
+    #target_q = np.minimum(returns, np.maximum(target_q * gamma_buffer[gammas].reshape(bsz, 1), target_q))
     return target_q.reshape(target_shape)

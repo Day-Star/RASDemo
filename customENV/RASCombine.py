@@ -82,21 +82,21 @@ class CombineEnv(gym.Env):
         # Set the combine parameters
         self.maxCombineSpeed = 1.5  # Maximum speed of the combine m/s
         self.minCombineSpeed = 0.5  # Minimum speed of the combine m/s
-        self.maxCombineAccel = 1.5  # Maximum acceleration of the combine m/s^2
+        self.maxCombineAccel = 1.0  # Maximum acceleration of the combine m/s^2
         self.combineRadius = .4     # Radius of the combine in meters
 
         # Set the field parameters
-        self.fieldWidth = 10.0      # Width of the field in meters
-        self.fieldHeight = 10.0     # Height of the field in meters
-        self.combineOffset = 2.0    # Offset of the combine from the top of the field in meters
+        self.fieldWidth = 15.0      # Width of the field in meters
+        self.fieldHeight = 15.0     # Height of the field in meters
+        self.combineOffset = 3.0    # Offset of the combine from the top of the field in meters
 
         # Set the target parameters
-        self.targetRadius = 1       # Radius of the target in meters
-        self.targetOffset = -2.0     # Offset of the target from the combine in meters
+        self.targetRadius = 1.5     # Radius of the target in meters
+        self.targetOffset = -2.0    # Offset of the target from the combine in meters
 
         # Set the observation space
         high = np.array([self.fieldWidth/2, self.combineOffset, 180, self.maxTractorSpeed, self.maxCombineSpeed], dtype=np.float64)
-        low = np.array([-self.fieldWidth/2, (self.combineOffset - self.fieldHeight), -180, -self.maxTractorSpeed, -self.minCombineSpeed], dtype=np.float64)
+        low = np.array([-self.fieldWidth/2, (self.combineOffset - self.fieldHeight), -180, -self.maxTractorSpeed, self.minCombineSpeed], dtype=np.float64)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float64)
 
         # Set the control space
@@ -143,7 +143,7 @@ class CombineEnv(gym.Env):
 
         # Check if we are in the target
         if dist > 0:
-            return dist
+            return dist * 25
 
         # Calculate the distance to the target
         return dist
@@ -164,13 +164,19 @@ class CombineEnv(gym.Env):
         l1 = (-y -self.tractorRadius + self.combineRadius)
 
         # Crops in front of the combine
-        l2 = (min(abs(x-50) - 50, abs(y) - (self.combineRadius + self.tractorRadius)))
+        l2 = (max(abs(x-50) - 50, abs(y) - (self.combineRadius + self.tractorRadius)))
 
         # Calculate the distance to the combine
         combine_dist = (np.sqrt(x**2 + y**2) - (self.combineRadius + self.tractorRadius))
 
-        # Return the minimum of the three
-        return min(l1, l2, combine_dist)
+        # Get the minimum of the three
+        lx = min(l1, l2, combine_dist)
+
+        # Check if positive or negative
+        if lx > 0:
+            return lx * 100
+        
+        return lx * 6
     
     def step(self, u):
         """
@@ -192,6 +198,11 @@ class CombineEnv(gym.Env):
 
         # Decompose the control input
         thetaDot, at, ac = u
+
+        # Clip the control input
+        thetaDot = np.clip(thetaDot, -self.maxThetaDot, self.maxThetaDot)
+        at = np.clip(at, -self.maxTractorAccel, self.maxTractorAccel)
+        ac = np.clip(ac, -self.maxCombineAccel, self.maxCombineAccel)
 
         # Allocate h_reward
         h_reward = -1
@@ -230,14 +241,14 @@ class CombineEnv(gym.Env):
         theta = angleNorm(theta + thetaDot * self.dt)
         vt = np.clip(vt + at * self.dt, -self.maxTractorSpeed, self.maxTractorSpeed)
         vc = np.clip(vc + ac * self.dt, self.minCombineSpeed, self.maxCombineSpeed)
-        x = x + vt * np.cos(theta) * self.dt - (vc * self.dt)
-        y = y + vt * np.sin(theta) * self.dt
+        x = x + (vt * np.cos(np.deg2rad(theta)) - vc) * self.dt
+        y = y + vt * np.sin(np.deg2rad(theta)) * self.dt
 
         # Update the state
         self.state = np.array([x, y, theta, vt, vc], dtype=np.float64)
 
-        # Apply termination condition
-        if self.do_term & (np.abs(x) > self.fieldWidth/2 or np.abs(y) > self.fieldHeight):
+        # Apply termination condition if x,y is > 20
+        if self.do_term & ((abs(x) > 10) | (abs(y) > 14)):
             
             # We are terminating, set flags and reward
             done = True

@@ -50,9 +50,9 @@ def get_args():
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
     # Number of training envorinments (training workers)
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=16)
     # Number of testing environments (testing workers)
-    parser.add_argument('--test-num', type=int, default=20)
+    parser.add_argument('--test-num', type=int, default=10)
 
     """ Training Length and Batch Size Parameters"""
     # Set the number of epochs for the simulation. Note: if --reward-threshold is met, the simulation will end early
@@ -60,7 +60,7 @@ def get_args():
     parser.add_argument('--epoch', type=int, default=200)
     # Set the number of steps per epoch. The total steps can be calculated by multiplyaing --step-per-epoch by --epoch
     parser.add_argument('--step-per-epoch', type=int, default=40000)
-    parser.add_argument('--step-per-collect', type=int, default=8)
+    parser.add_argument('--step-per-collect', type=int, default=16)
     parser.add_argument('--update-per-step', type=float, default=0.125)
     parser.add_argument('--batch-size', type=int, default=512)
     parser.add_argument('--actor-hidden-sizes', type=int, nargs='*', default=[512]*4)
@@ -78,7 +78,7 @@ def get_args():
 
 # Defining ddpg test function
 # This is a generic catch all function that *should* work for all systems
-def V_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_reward = None, logdir = None, batch_size = None, hidden_sizes = None, **kwargs):
+def V_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_reward = None, logdir = None, v_batch_size = None, hidden_sizes = None, **kwargs):
 
     # Parse the arguments received from external function call
     task = args.task if task is None else task                              # Set new task if provided
@@ -86,17 +86,23 @@ def V_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_rewa
     do_term = args.do_term if do_term is None else do_term                  # Set new termination parameters if provided
     term_reward = args.term_reward if term_reward is None else term_reward  # Set new termination reward if provided
     logdir = args.logdir if logdir is None else logdir                      # Set new log directory if provided
-    batch_size = args.batch_size if batch_size is None else batch_size      # Set new batch size if provided
+    batch_size = args.batch_size if v_batch_size is None else v_batch_size      # Set new batch size if provided
     actor_hidden_sizes = args.actor_hidden_sizes if hidden_sizes is None else hidden_sizes  # Set new hidden sizes if provided
     critic_hidden_sizes = args.critic_hidden_sizes if hidden_sizes is None else hidden_sizes  # Set new hidden sizes if provided
-
-    # log
-    log_path = os.path.join(logdir, task, 'ddpg')
-    writer = SummaryWriter(log_path)
-    logger = TensorboardLogger(writer)
+    gamma = args.gamma if 'gamma' in kwargs else kwargs['gamma']            # Set new gamma if provided
+    tau = args.tau if 'tau' in kwargs else kwargs['tau']                   # Set new tau if provided
 
     # Loading the H function policy
+    log_path = os.path.join(logdir, task, 'ddpg')
     hPolicy = torch.load(os.path.join(log_path, 'hPolicy.pth'))
+    
+    # Check if doing v1 training
+    if 'v1' in task:
+        task = task.replace('v1','v2')
+
+    # log
+    writer = SummaryWriter(log_path)
+    logger = TensorboardLogger(writer)
     
     # environment
     env = gym.make(task,hPolicy = hPolicy)
@@ -138,14 +144,14 @@ def V_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_rewa
     test_envs.seed(args.seed)
 
     # Control model
-    net = Net(args.state_shape, hidden_sizes=actor_hidden_sizes, device=args.device)
+    net = Net(args.state_shape, hidden_sizes=actor_hidden_sizes, device=args.device, activation=torch.nn.LeakyReLU)
     control = Actor(
         net, args.control_shape, max_action=args.max_control, device=args.device
     ).to(args.device)
     control_optim = torch.optim.Adam(control.parameters(), lr=args.actor_lr)
     
     # Disturbance model
-    net = Net(args.state_shape, hidden_sizes=actor_hidden_sizes, device=args.device)
+    net = Net(args.state_shape, hidden_sizes=actor_hidden_sizes, device=args.device, activation=torch.nn.LeakyReLU)
     disturbance = Actor(
         net, args.disturbance_shape, max_action=args.max_disturbance, device=args.device
     ).to(args.device)
@@ -169,8 +175,8 @@ def V_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_rewa
         disturbance_optim = disturbance_optim,
         critic = critic,
         critic_optim = critic_optim,
-        tau=args.tau,
-        gamma=args.gamma,
+        tau=tau,
+        gamma=gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         estimation_step=args.n_step,
         action_space=env.action_space,
@@ -195,8 +201,8 @@ def V_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_rewa
         disturbance_optim = disturbance_optim,
         critic = critic,
         critic_optim = critic_optim,
-        tau=args.tau,
-        gamma=args.gamma,
+        tau=tau,
+        gamma=gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         estimation_step=args.n_step,
         action_space=env.action_space,

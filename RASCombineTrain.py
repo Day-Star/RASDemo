@@ -2,6 +2,7 @@
 # 2/3/2025
 
 import argparse
+import os
 from training.RASCombineH import H_ddpg
 from training.RASCombineV import V_ddpg
 import torch
@@ -9,7 +10,7 @@ import numpy as np
 import gymnasium as gym
 from modelCall.RASZeroSumCall import Actor
 
-DEFAULT_X = -5.0
+DEFAULT_X = 4.0
 DEFAULT_Y = -2.0
 DEFAULT_THETA = 0.0
 DEFAULT_VT = 0.0
@@ -23,10 +24,16 @@ def get_args():
     parser.add_argument("--task", type=str, default="Combine-v1", help="Task to train on")
 
     # Number of epochs
-    parser.add_argument("--num_epochs", type=int, default=500, help="Number of epochs to train for")
+    parser.add_argument("--epoch", type=int, default=30, help="Number of epochs to train for")
+    parser.add_argument("--steps_per_epoch", type=int, default=40000, help="Number of steps per epoch")
+
+    # Training parameters
+    parser.add_argument("--gamma", type=float, default=0.95, help="Discount factor")
+    parser.add_argument("--tau", type=float, default=0.005, help="Soft update parameter")
+    parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
 
     # Environment termination parameters
-    parser.add_argument('-e', "--do-terminate", action='store_true',default=False, help="Whether to terminate the environment when the episode is done")
+    parser.add_argument('-e', "--do-term", action='store_true',default=False, help="Whether to terminate the environment when the episode is done")
     parser.add_argument('--term-reward', type=float, default=None, help="Reward to give when the episode terminated early")
 
     # Logging directory
@@ -38,10 +45,12 @@ def get_args():
     )
 
     # Network sized
-    parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[ 128, 128])
+    parser.add_argument('--v-batch-size', type=int, default=512)
+    parser.add_argument('--h-batch-size', type=int, default=1024)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512, 256, 128])
+    parser.add_argument('--critic_hidden_sizes', type=int, nargs='*', default=[768, 384, 192])
 
-    # Testing parameters                                          # Time to test
+    # Testing parameters
     parser.add_argument('--state', type=np.array, default=np.array([DEFAULT_X, DEFAULT_Y, DEFAULT_THETA, DEFAULT_VT, DEFAULT_VC]))  # State to test
     parser.add_argument('--csv', type=str, default='combineCheck.csv')                                              # CSV file to store the results
     parser.add_argument('--res', type=float, default=0.05)                                                        # Resolution for checking the value functions
@@ -65,9 +74,33 @@ def main(args=get_args(), train=False, doTest=False):
         # Train V function
         V_ddpg(**vars(args))
 
+        # Create the Combine-v1 directory
+        os.makedirs(os.path.join(args.logdir, 'Combine-v1', 'ddpg'), exist_ok=True)
+
+        # Move the V function from Combine-v2 to Combine-v1
+        v_path = os.path.join(args.logdir, 'Combine-v2', 'ddpg', 'vPolicy.pth')
+
+        # Load the H function
+        v = torch.load(v_path)
+
+        # Save the H function to the Combine-v1 directory
+        v_path = os.path.join(args.logdir, 'Combine-v1', 'ddpg', 'vPolicy.pth')
+
+        # Save the H function
+        torch.save(v, v_path)
+
     # Test the agent
     if doTest:
+
+        # Run a general test
         test(args.state, args.task, args.logdir, args.device, args.csv)
+
+        # Construct H csv
+        h_csv = os.path.join("H", args.csv)
+
+        # Run a test of the H function
+        #test(args.state, args.task, args.logdir, args.device, h_csv, forceH=True)
+
 
 def test(state, environment, logdir, device, csv, forceH = False, forceV = False):
 
@@ -121,13 +154,13 @@ def test(state, environment, logdir, device, csv, forceH = False, forceV = False
     with open(csv, 'w', newline = '') as f:
 
         # Write the header
-        f.write("X, Y, Z, Xdot, Ydot, Zdot, vx, vy, Reward, h, v\n")
+        f.write("X, Y, Theta, VT, VC, thetaDot, at, ac, Reward, h, v\n")
 
     # Close the file
     f.close()
 
     # Run the environment until we get 20 positive rewards or run for 1000 steps
-    while reward_count < 20 and steps < 1000:
+    while reward_count < 500 and steps < 1000:
 
         # Get the action from the actor
         action, hReward, vReward = actor.getResult(torch.tensor([state], dtype=torch.float64))
@@ -149,7 +182,7 @@ def test(state, environment, logdir, device, csv, forceH = False, forceV = False
         with open(csv, 'a', newline='') as f:
 
             # Write the data
-            f.write(f'{state[0]}, {state[1]}, {state[2]}, {state[3]}, {state[4]}, {reward}, {hReward}, {vReward}\n')
+            f.write(f'{state[0]}, {state[1]}, {state[2]}, {state[3]}, {state[4]}, {action[0]}, {action[1]}, {action[2]}, {reward}, {hReward}, {vReward}\n')
     
     # Close the file
     f.close()
@@ -158,4 +191,4 @@ def test(state, environment, logdir, device, csv, forceH = False, forceV = False
     print("Final State: ", state)
 
 if __name__ == "__main__":
-    main(train = True, doTest=True)
+    main(train = True, doTest=False)
