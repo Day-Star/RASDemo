@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument("--task", type=str, default="Combine-v1", help="Task to train on")
 
     # Number of epochs
-    parser.add_argument("--epoch", type=int, default=30, help="Number of epochs to train for")
+    parser.add_argument("--epoch", type=int, default=70, help="Number of epochs to train for")
     parser.add_argument("--steps_per_epoch", type=int, default=40000, help="Number of steps per epoch")
 
     # Training parameters
@@ -45,10 +45,10 @@ def get_args():
     )
 
     # Network sized
-    parser.add_argument('--v-batch-size', type=int, default=512)
-    parser.add_argument('--h-batch-size', type=int, default=1024)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512, 256, 128])
-    parser.add_argument('--critic_hidden_sizes', type=int, nargs='*', default=[768, 384, 192])
+    parser.add_argument('--v-batch-size', type=int, default=256)
+    parser.add_argument('--h-batch-size', type=int, default=512)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512]*3)
+    parser.add_argument('--critic_hidden_sizes', type=int, nargs='*', default=[512]*4)
 
     # Testing parameters
     parser.add_argument('--state', type=np.array, default=np.array([DEFAULT_X, DEFAULT_Y, DEFAULT_THETA, DEFAULT_VT, DEFAULT_VC]))  # State to test

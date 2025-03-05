@@ -438,20 +438,10 @@ def _nstep_return(
     gamma: float,
     n_step: int,
 ) -> np.ndarray:
-    gamma_buffer = np.ones(n_step + 1)
-    for i in range(1, n_step + 1):
-        gamma_buffer[i] = gamma_buffer[i - 1] * gamma
     target_shape = target_q.shape
     bsz = target_shape[0]
     # change target_q to 2d array
     target_q = target_q.reshape(bsz, -1)
-    returns = np.zeros(target_q.shape)
-    gammas = np.full(indices[0].shape, n_step)
-    for n in range(n_step - 1, -1, -1):
-        now = indices[n]
-        gammas[end_flag[now] > 0] = n + 1
-        returns[end_flag[now] > 0] = 0.0
-        returns = rew[now].reshape(bsz, 1) + gamma * returns
     # Bellman Equation
         # H Function Bellman: H(x) = min{min{g(x),l(x)},\gamma * H(f(x,u)}
         # The function is negated to represent a reward instead of cost
@@ -460,6 +450,6 @@ def _nstep_return(
         # gamma_buffer: discount factor, \gamma
         # Function should represent cost to go: min{g(x),l(x)} + \gamma * H(f(x,u))
         # target_q = np.minimum(returns) + target_q * gamma_buffer[gammas].reshape(bsz, 1)
-    target_q = np.minimum(returns, target_q * gamma_buffer[gammas].reshape(bsz, 1))
-    #target_q = np.minimum(returns, np.maximum(target_q * gamma_buffer[gammas].reshape(bsz, 1), target_q))
+    target_q = np.minimum(rew[indices].reshape(bsz, 1), target_q * gamma)
+    #target_q = np.minimum(rew[indices].reshape(bsz, 1), np.maximum(target_q * gamma, target_q))
     return target_q.reshape(target_shape)

@@ -436,8 +436,8 @@ def _gae_return(
 
 #@njit
 def _nstep_return(
-    tmpreach: np.ndarray,
-    tmpavoid: np.ndarray,
+    reach: np.ndarray,
+    avoid: np.ndarray,
     rew: np.ndarray,
     end_flag: np.ndarray,
     target_q: np.ndarray,
@@ -445,35 +445,10 @@ def _nstep_return(
     gamma: float,
     n_step: int,
 ) -> np.ndarray:
-    n_step = 1
-    gamma_buffer = np.ones(n_step + 1)
-    for i in range(1, n_step + 1):
-        gamma_buffer[i] = gamma_buffer[i - 1] * gamma
+    
     target_shape = target_q.shape
     bsz = target_shape[0]
-
-    # change target_q to 2d array
     target_q = target_q.reshape(bsz, -1)
-    returns = np.zeros(target_q.shape)
-    gammas = np.full(indices[0].shape, n_step)
-
-     # Setting up reach and avoid
-    reach = np.zeros(target_q.shape)
-    avoid = np.zeros(target_q.shape)
-
-
-    for n in range(n_step - 1, -1, -1):
-        now = indices[n]
-        gammas[end_flag[now] > 0] = n + 1
-        returns[end_flag[now] > 0] = 0.0
-        returns = rew[now].reshape(bsz, 1) + gamma * returns
-
-        # Truncating temporary reach and avoid to actual reach and avoid
-        # This prevents problems with .reshape(bsz, 1) in the next step
-        reach[end_flag[now] > 0] = 0.0
-        avoid[end_flag[now] > 0] = 0.0
-        reach = tmpreach[now].reshape(bsz, 1) + gamma * reach
-        avoid = tmpavoid[now].reshape(bsz, 1) + gamma * avoid
 
     # Bellman Equation
         # Value Function Bellman: V(x) = min{l(x),max{H(x),V(f(x,u))}}
@@ -482,6 +457,5 @@ def _nstep_return(
         # returns: initial state value, min{g(x),l(x)}
         # gamma_buffer: discount factor, \gamma
         # Function should represent cost to go: min{g(x),l(x)} + \gamma * H(f(x,u))
-        # target_q = np.minimum(returns) + target_q * gamma_buffer[gammas].reshape(bsz, 1)
-    target_q = np.minimum(avoid.reshape(bsz,1), np.maximum(reach.reshape(bsz,1), target_q * gamma_buffer[gammas].reshape(bsz, 1)))
+    target_q = np.minimum(avoid[indices].reshape(bsz, 1), np.maximum(reach[indices].reshape(bsz, 1), target_q * gamma))
     return target_q.reshape(target_shape)

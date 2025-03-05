@@ -198,7 +198,7 @@ class RASCartEnv(gym.Env):
         reward = min(reach, avoid)
 
         newxdot = xdot + u * self.dt
-        newxdot = np.clip(newxdot, -self.max_speed, self.max_speed)
+        #newxdot = np.clip(newxdot, -self.max_speed, self.max_speed)
         newx = x + newxdot * self.dt
 
         self.state = np.array([newx, newxdot])

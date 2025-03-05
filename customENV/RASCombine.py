@@ -80,18 +80,18 @@ class CombineEnv(gym.Env):
         self.tractorRadius = .4     # Radius of the tractor in meters
 
         # Set the combine parameters
-        self.maxCombineSpeed = 1.5  # Maximum speed of the combine m/s
-        self.minCombineSpeed = 0.5  # Minimum speed of the combine m/s
+        self.maxCombineSpeed = 2.0  # Maximum speed of the combine m/s
+        self.minCombineSpeed = 1.0  # Minimum speed of the combine m/s
         self.maxCombineAccel = 1.0  # Maximum acceleration of the combine m/s^2
         self.combineRadius = .4     # Radius of the combine in meters
 
         # Set the field parameters
-        self.fieldWidth = 15.0      # Width of the field in meters
-        self.fieldHeight = 15.0     # Height of the field in meters
+        self.fieldWidth = 8.0      # Width of the field in meters
+        self.fieldHeight = 8.0     # Height of the field in meters
         self.combineOffset = 3.0    # Offset of the combine from the top of the field in meters
 
         # Set the target parameters
-        self.targetRadius = 1.5     # Radius of the target in meters
+        self.targetRadius = 1.5    # Radius of the target in meters
         self.targetOffset = -2.0    # Offset of the target from the combine in meters
 
         # Set the observation space
@@ -100,18 +100,18 @@ class CombineEnv(gym.Env):
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float64)
 
         # Set the control space
-        high = np.array([self.maxThetaDot, self.maxTractorAccel], dtype=np.float64)
-        low = np.array([-self.maxThetaDot, -self.maxTractorAccel], dtype=np.float64)
+        high = np.array([1]*2, dtype=np.float64)
+        low = np.array([-1]*2, dtype=np.float64)
         self.control_space = spaces.Box(low=low, high=high, dtype=np.float64)
 
         # Set the disturbance space
-        high = np.array([self.maxCombineAccel], dtype=np.float64)
-        low = np.array([-self.maxCombineAccel], dtype=np.float64)
+        high = np.array([1], dtype=np.float64)
+        low = np.array([-1], dtype=np.float64)
         self.disturbance_space = spaces.Box(low=low, high=high, dtype=np.float64)
 
         # Set the action space
-        high = np.array([self.maxThetaDot, self.maxTractorAccel, self.maxCombineAccel], dtype=np.float64)
-        low = np.array([-self.maxThetaDot, -self.maxTractorAccel, -self.maxCombineAccel], dtype=np.float64)
+        high = np.array([1] * 3, dtype=np.float64)
+        low = np.array([-1] * 3, dtype=np.float64)
         self.action_space = spaces.Box(low=low, high=high, dtype=np.float64)
 
         # Set the H policy
@@ -126,7 +126,7 @@ class CombineEnv(gym.Env):
         # Set the termination reward
         self.term_reward = term_reward
 
-    def g_x(self, x, y):
+    def g_x(self, x, y, theta):
         """
         The g_x function is the reach reward function for the environment.
 
@@ -139,11 +139,11 @@ class CombineEnv(gym.Env):
         """
 
         # Calculate the distance to the target
-        dist = self.targetRadius - np.sqrt(x**2 + (y - self.targetOffset)**2)
+        dist = self.targetRadius - np.sqrt(x**2 + (y - self.targetOffset)**2 + (theta/20)**2)
 
         # Check if we are in the target
         if dist > 0:
-            return dist * 25
+            return dist * 30
 
         # Calculate the distance to the target
         return dist
@@ -199,6 +199,11 @@ class CombineEnv(gym.Env):
         # Decompose the control input
         thetaDot, at, ac = u
 
+        # Remap the control input from [-1,1] to [-max, max]
+        thetaDot = thetaDot * self.maxThetaDot
+        at = at * self.maxTractorAccel
+        ac = ac * self.maxCombineAccel
+
         # Clip the control input
         thetaDot = np.clip(thetaDot, -self.maxThetaDot, self.maxThetaDot)
         at = np.clip(at, -self.maxTractorAccel, self.maxTractorAccel)
@@ -229,12 +234,12 @@ class CombineEnv(gym.Env):
             h_reward = h_reward.item()
 
         # Get reach reward
-        reach = self.g_x(x, y) if (not self.V_train) | (h_reward >=0) else h_reward
+        reach = self.g_x(x, y, theta) if (not self.V_train) | (h_reward >=0) else h_reward
 
         # Get avoid reward
         avoid = self.l_x(x, y)
 
-        # Calculate the reward
+        # Calculate the reward (Gbar)
         reward = min(reach, avoid)
 
         # Compute dynamics
@@ -248,7 +253,7 @@ class CombineEnv(gym.Env):
         self.state = np.array([x, y, theta, vt, vc], dtype=np.float64)
 
         # Apply termination condition if x,y is > 20
-        if self.do_term & ((abs(x) > 10) | (abs(y) > 14)):
+        if self.do_term & ((abs(x) > 6) | (abs(y) > 10)):
             
             # We are terminating, set flags and reward
             done = True

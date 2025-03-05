@@ -148,7 +148,8 @@ def H_ddpg(args=get_args(), task = None, epoch = None, do_term = None, term_rewa
         args.action_shape,
         hidden_sizes=critic_hidden_sizes,
         concat=True,
-        device=args.device
+        device=args.device,
+        activation=torch.nn.LeakyReLU
     )
     critic = Critic(net, device=args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
